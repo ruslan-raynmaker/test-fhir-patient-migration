@@ -18,14 +18,16 @@ OBSERVATION_UPDATE_FIELDS = [
 ]
 
 
-def run_import(client=None, patient_limit=20, max_observations=200, only_with_observations=False):
+def run_import(client=None, patient_limit=20, max_observations=200, only_with_observations=False, since=None):
     client = client or FHIRClient()
-    run = ImportRun.objects.create()
-    logger.info("import run %s started (patient_limit=%s)", run.pk, patient_limit)
+    run = ImportRun.objects.create(checkpoint=since or "")
+    logger.info("import run %s started (patient_limit=%s, since=%s)", run.pk, patient_limit, since)
 
     params = {"_count": settings.FHIR_PAGE_SIZE, "_sort": "_lastUpdated"}
     if only_with_observations:
         params["_has:Observation:patient:status"] = "final"
+    if since:
+        params["_lastUpdated"] = f"ge{since}"
 
     consecutive_failures = 0
     try:

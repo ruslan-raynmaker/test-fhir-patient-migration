@@ -1,4 +1,6 @@
 import pytest
+from django.core.management import call_command
+from django.core.management.base import CommandError
 
 from clinical.fhir.client import FHIRUnavailable
 from clinical.importer import run_import
@@ -13,8 +15,10 @@ class FakeClient:
         self.observations = observations or {}
         self.broken_patients = set(broken_patients)
         self.crash_after = crash_after
+        self.calls = []
 
     def search(self, resource_type, params=None, limit=None):
+        self.calls.append((resource_type, dict(params or {})))
         if resource_type == "Patient":
             for i, resource in enumerate(self.patients[:limit]):
                 if i == self.crash_after:
@@ -108,3 +112,38 @@ def test_crash_mid_run_keeps_progress_in_db():
     assert run.status == ImportRun.Status.RUNNING
     assert (run.patients_imported, run.observations_imported) == (2, 2)
     assert run.checkpoint == "2024-01-02T00:00:00Z"
+
+
+def test_since_is_passed_to_patient_search():
+    client = FakeClient(patients=[patient("p1")])
+
+    run = run_import(client=client, since="2024-01-02T00:00:00Z")
+
+    resource_type, params = client.calls[0]
+    assert resource_type == "Patient"
+    assert params["_lastUpdated"] == "ge2024-01-02T00:00:00Z"
+    assert params["_sort"] == "_lastUpdated"
+    assert run.checkpoint == "2024-01-02T00:00:00Z"
+
+
+def test_resume_flag_continues_last_unfinished_run(monkeypatch):
+    ImportRun.objects.create(status=ImportRun.Status.COMPLETED, checkpoint="2024-01-01T00:00:00Z")
+    ImportRun.objects.create(status=ImportRun.Status.FAILED, checkpoint="2024-01-05T00:00:00Z")
+    captured = {}
+
+    def fake_run_import(**kwargs):
+        captured.update(kwargs)
+        return ImportRun.objects.create(status=ImportRun.Status.COMPLETED)
+
+    monkeypatch.setattr("clinical.management.commands.import_fhir.run_import", fake_run_import)
+    call_command("import_fhir", "--resume")
+
+    assert captured["since"] == "2024-01-05T00:00:00Z"
+
+
+def test_resume_only_when_last_run_is_unfinished():
+    ImportRun.objects.create(status=ImportRun.Status.FAILED, checkpoint="2024-01-01T00:00:00Z")
+    ImportRun.objects.create(status=ImportRun.Status.COMPLETED, checkpoint="2024-01-05T00:00:00Z")
+
+    with pytest.raises(CommandError):
+        call_command("import_fhir", "--resume")

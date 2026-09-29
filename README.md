@@ -14,7 +14,7 @@ poetry run python manage.py runserver
 ```
 
 Tests: `poetry run pytest`. Import can be run many times, records are upserted by FHIR id.
-Flags: `--patients`, `--max-observations`, `--only-with-observations`.
+Flags: `--patients`, `--max-observations`, `--only-with-observations`, `--resume`.
 
 ## Notes
 
@@ -28,7 +28,8 @@ One patient = one transaction. If a patient fails, its id goes to the log and th
 in a row stop the run, the server is probably down.
 
 Progress (counters and `lastUpdated` of the last imported patient) is saved on `ImportRun` after every patient, not
-at the end, so a crash does not lose what was already imported.
+at the end. Patients come sorted by `_lastUpdated`, so `import_fhir --resume` can continue the last unfinished run from
+that checkpoint with `_lastUpdated=ge...`. Re-importing a patient twice is fine, it is an upsert.
 
 `value[x]` goes to number + unit or to text, components go to a JSON list. Partial birth dates ("1980")
 are saved as null, better nothing than a fake date.
