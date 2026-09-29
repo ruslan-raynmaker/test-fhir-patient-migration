@@ -53,6 +53,7 @@ class ImportRun(models.Model):
     observations_imported = models.PositiveIntegerField(default=0)
     failures = models.JSONField(default=list, blank=True)
     error = models.TextField(blank=True)
+    checkpoint = models.CharField(max_length=64, blank=True)
 
     class Meta:
         ordering = ["-started_at"]
