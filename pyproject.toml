@@ -1,0 +1,32 @@
+[project]
+name = "test-fhir-patient-migration"
+version = "0.1.0"
+description = "FHIR -> internal service migration slice"
+authors = [
+    {name = "koruslan1",email = "russkovalchuk@gmail.com"}
+]
+readme = "README.md"
+requires-python = ">=3.12,<4.0"
+dependencies = [
+    "django (>=6.1.1,<7.0.0)",
+    "djangorestframework (>=3.18.1,<4.0.0)",
+    "requests (>=2.34.2,<3.0.0)"
+]
+
+
+[tool.poetry]
+package-mode = false
+
+[build-system]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^9.1.1"
+pytest-django = "^4.14.0"
+responses = "^0.26.3"
+
+[tool.pytest.ini_options]
+DJANGO_SETTINGS_MODULE = "config.settings"
+pythonpath = ["backend"]
+testpaths = ["backend"]
