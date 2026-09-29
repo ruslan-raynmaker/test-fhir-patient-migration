@@ -11,10 +11,17 @@ poetry install && cd backend
 poetry run python manage.py migrate
 poetry run python manage.py import_fhir --patients 20 --only-with-observations
 poetry run python manage.py runserver
+
+cd ../frontend && npm install && npm run dev
 ```
 
 Tests: `poetry run pytest`. Import can be run many times, records are upserted by FHIR id.
 Flags: `--patients`, `--max-observations`, `--only-with-observations`, `--resume`.
+
+## API
+
+- `GET /api/patients/` - list with observation counts
+- `GET /api/patients/{id}/` - patient with observations, 404 if missing
 
 ## Notes
 
